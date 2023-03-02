@@ -1,0 +1,78 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">SignalR Chat Uygulaması</h1>
+    <div class="container">
+        <div class="row">
+            <div class="col-4">
+                <input type="text" class="form-control" id="message" placeholder="Mesaj" />
+                <input type="text" class="form-control" id="userName" placeholder="Kullanıcı Adı" />
+                <button id="btnSendMessage" type="button" class="btn btn-primary">Gönder</button>
+            </div>
+            <div class="col-8">
+                <ul class="list-group" id="messages">
+
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/chatHub")
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        async function start() {
+            try {
+                await connection.start();
+                console.log("SignalR Connected");
+            }
+            catch (err) {
+                console.error(err);
+                setTimeout(start, 5000);
+            }
+        }
+        connection.onclose(async () => {
+            await start();
+        });
+        start();
+        $('#btnSendMessage').click(function () {
+            try {
+                var kullaniciAdi = $('#userName').val();
+                var message = $('#message').val();
+                connection.invoke('SendMessage', kullaniciAdi, message);
+                //connection.invoke("SendMessage", "Berkay", "Message");
+            } catch (error) {
+                console.error(error);
+            }
+        });
+        $().ready(function () {
+            connection.on("ReceiveMessage", (user, message) => {
+                console.log(user, message);
+                $('#messages').append(
+                    `<li class="list-group-item d-flex justify-content-between align-items-start">
+                        <div class="ms-2 me-auto">
+                            <div class="fw-bold">${htmlEncode(user)}:${htmlEncode(message)}</div>
+                                Content for list item
+                            </div>
+                        </div>
+                    </li>`
+                );
+            });
+        });
+
+        // Block XSS 
+        function htmlEncode(str) {
+            return String(str).replace(/[^\w. ]/gi, function (c) {
+                return '&#' + c.charCodeAt(0) + ';';
+            });
+        }
+    </script>
+}
+
+
